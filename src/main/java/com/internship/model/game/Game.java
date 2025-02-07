@@ -8,12 +8,16 @@ import com.internship.model.figure.impl.Pawn;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 public class Game {
-    private final Semaphore semaphore = new Semaphore(1);
+    private final Lock lock = new ReentrantLock();
+    private final Condition canMove = lock.newCondition();
+    private Player lastPlayer;
     private final Board board = new Board();
     private final Player[] players = new Player[2];
     private boolean gameInProcess = false;
@@ -44,6 +48,7 @@ public class Game {
                                 .toList()
                 )
         );
+        lastPlayer = players[1];
     }
 
     public void startGame() {
@@ -54,8 +59,11 @@ public class Game {
     }
 
     public void makeMove(Player player) {
+        lock.lock();
         try {
-            semaphore.acquire();
+            while (player.equals(lastPlayer)) {
+                canMove.await();
+            }
             if (!gameInProcess) return;
             promotePawns(player);
             Figure figure = player.figures()
@@ -68,13 +76,15 @@ public class Game {
             Player opponent = player.equals(players[0]) ? players[1] : players[0];
             if (player.figures().size() == 1 && opponent.figures().size() == 1) {
                 gameInProcess = false;
-                int lot = ThreadLocalRandom.current().nextInt() % 2;
+                int lot = Math.abs(ThreadLocalRandom.current().nextInt() % 2);
                 System.out.printf(
                         "%s team gave up, %s team won!\n",
                         players[lot].team(),
                         players[Math.abs(lot - 1)].team()
                 );
-                semaphore.release();
+                lastPlayer = player;
+                canMove.signal();
+                lock.unlock();
                 return;
             }
             Position position = figure.findPossibleMoves(board)
@@ -94,7 +104,11 @@ public class Game {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } finally {
-            semaphore.release();
+            lastPlayer = player;
+            if (gameInProcess) {
+                canMove.signal();
+                lock.unlock();
+            }
         }
     }
 
