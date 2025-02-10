@@ -61,58 +61,22 @@ public class Game {
         }
     }
 
-    public void makeMove(Player player) {
+    public void tryMakeMove(Player player) {
         lock.lock();
         try {
             while (player.equals(lastPlayer)) {
                 canMove.await();
             }
             if (!gameInProcess) return;
-            promotePawns(player);
-            Figure figure = player.figures()
-                    .stream()
-                    .filter(element -> !element.findPossibleMoves(board).isEmpty())
-                    .collect(Collectors.collectingAndThen(Collectors.toList(), collected -> {
-                        Collections.shuffle(collected);
-                        return collected;
-                    })).getFirst();
             Player opponent = player.equals(players[0]) ? players[1] : players[0];
-            if (player.figures().size() == 1 && opponent.figures().size() == 1) {
-                gameInProcess = false;
-                int lot = Math.abs(ThreadLocalRandom.current().nextInt() % 2);
-                System.out.printf(
-                        "%s team gave up, %s team won!\n",
-                        players[lot].team(),
-                        players[Math.abs(lot - 1)].team()
-                );
+            if (onlyKingsOnBoard(player, opponent)) {
                 lastPlayer = player;
                 canMove.signal();
                 lock.unlock();
                 return;
             }
-            Position position = figure.findPossibleMoves(board)
-                    .stream()
-                    .collect(Collectors.collectingAndThen(Collectors.toList(), collected -> {
-                        Collections.shuffle(collected);
-                        return collected;
-                    })).getFirst();
-            Figure goalFigure = board.getCells()[position.x()][position.y()];
-            switch (getCellStatus(goalFigure, player.team())) {
-                case EMPTY -> board.getCells()[figure.getPosition().x()][figure.getPosition().y()] = null;
-                case OTHER_TEAM -> {
-                    board.getCells()[figure.getPosition().x()][figure.getPosition().y()] = null;
-                    opponent.figures().removeIf(element -> element.equals(goalFigure));
-                }
-                case SAME_TEAM -> {
-                    if (goalFigure.getClass().equals(Rook.class)) {
-                        board.getCells()[figure.getPosition().x()][figure.getPosition().y()] = goalFigure;
-                        goalFigure.setPosition(figure.getPosition());
-                    }
-                }
-            }
-            board.getCells()[position.x()][position.y()] = figure;
-            printPlayerMove(player, figure, goalFigure, position);
-            figure.setPosition(position);
+            promotePawns(player);
+            makeMove(player, opponent);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } finally {
@@ -124,6 +88,20 @@ public class Game {
         }
     }
 
+    private boolean onlyKingsOnBoard(Player player, Player opponent) {
+        if (player.figures().size() == 1 && opponent.figures().size() == 1) {
+            gameInProcess = false;
+            int lot = Math.abs(ThreadLocalRandom.current().nextInt() % 2);
+            System.out.printf(
+                    "%s team gave up, %s team won!\n",
+                    players[lot].team(),
+                    players[Math.abs(lot - 1)].team()
+            );
+            return true;
+        }
+        return false;
+    }
+
     private void promotePawns(Player player) {
         player.figures().addAll(
                 player.figures()
@@ -131,15 +109,50 @@ public class Game {
                         .filter(figure -> figure.getClass().equals(Pawn.class) && ((Pawn) figure).canPromote())
                         .map(figure -> ((Pawn) figure).promote())
                         .peek(figure -> System.out.printf(
-                                "%s pawn on %c%d now is %s\n",
+                                "%s pawn %c%d promoted to %s%c%d\n",
                                 figure.getTeam(),
                                 figure.getPosition().x() + 'a',
                                 figure.getPosition().y() + 1,
-                                figure.getName()
+                                figure.getName(),
+                                figure.getPosition().x() + 'a',
+                                figure.getPosition().y() + 1
                         ))
                         .collect(Collectors.toSet())
         );
         player.figures().removeIf(figure -> figure.getClass().equals(Pawn.class) && ((Pawn) figure).canPromote());
+    }
+
+    private void makeMove(Player player, Player opponent) {
+        Figure figure = player.figures()
+                .stream()
+                .filter(element -> !element.findPossibleMoves(board).isEmpty())
+                .collect(Collectors.collectingAndThen(Collectors.toList(), collected -> {
+                    Collections.shuffle(collected);
+                    return collected;
+                })).getFirst();
+        Position position = figure.findPossibleMoves(board)
+                .stream()
+                .collect(Collectors.collectingAndThen(Collectors.toList(), collected -> {
+                    Collections.shuffle(collected);
+                    return collected;
+                })).getFirst();
+        Figure goalFigure = board.getCells()[position.x()][position.y()];
+        switch (getCellStatus(goalFigure, player.team())) {
+            case EMPTY -> board.getCells()[figure.getPosition().x()][figure.getPosition().y()] = null;
+            case OTHER_TEAM -> {
+                board.getCells()[figure.getPosition().x()][figure.getPosition().y()] = null;
+                opponent.figures().removeIf(element -> element.equals(goalFigure));
+            }
+            case SAME_TEAM -> {
+                if (goalFigure.getClass().equals(Rook.class)) {
+                    board.getCells()[figure.getPosition().x()][figure.getPosition().y()] = goalFigure;
+                    goalFigure.setPosition(figure.getPosition());
+                }
+            }
+        }
+        board.getCells()[position.x()][position.y()] = figure;
+        printPlayerMove(player, figure, goalFigure, position);
+        figure.setPosition(position);
     }
 
     private static void printPlayerMove(Player player, Figure figure, Figure opponentFigure, Position position) {

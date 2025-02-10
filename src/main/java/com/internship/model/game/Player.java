@@ -9,7 +9,7 @@ public record Player(Game game, Team team, Set<Figure> figures) implements Runna
     @Override
     public void run() {
         while (game.isGameInProcess()) {
-            game.makeMove(this);
+            game.tryMakeMove(this);
         }
     }
 }
