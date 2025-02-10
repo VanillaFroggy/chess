@@ -4,6 +4,7 @@ import com.internship.model.Team;
 import com.internship.model.figure.Figure;
 import com.internship.model.figure.Position;
 import com.internship.model.figure.impl.Pawn;
+import com.internship.model.figure.impl.Rook;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -13,6 +14,8 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
+
+import static com.internship.model.CellStatus.getCellStatus;
 
 public class Game {
     private final Lock lock = new ReentrantLock();
@@ -93,13 +96,22 @@ public class Game {
                         Collections.shuffle(collected);
                         return collected;
                     })).getFirst();
-            Figure opponentFigure = board.getCells()[position.x()][position.y()];
-            if (opponentFigure != null) {
-                opponent.figures().removeIf(element -> element.equals(opponentFigure));
+            Figure goalFigure = board.getCells()[position.x()][position.y()];
+            switch (getCellStatus(goalFigure, player.team())) {
+                case EMPTY -> board.getCells()[figure.getPosition().x()][figure.getPosition().y()] = null;
+                case OTHER_TEAM -> {
+                    board.getCells()[figure.getPosition().x()][figure.getPosition().y()] = null;
+                    opponent.figures().removeIf(element -> element.equals(goalFigure));
+                }
+                case SAME_TEAM -> {
+                    if (goalFigure.getClass().equals(Rook.class)) {
+                        board.getCells()[figure.getPosition().x()][figure.getPosition().y()] = goalFigure;
+                        goalFigure.setPosition(figure.getPosition());
+                    }
+                }
             }
-            board.getCells()[figure.getPosition().x()][figure.getPosition().y()] = null;
             board.getCells()[position.x()][position.y()] = figure;
-            printPlayerMove(player, figure, opponentFigure, position);
+            printPlayerMove(player, figure, goalFigure, position);
             figure.setPosition(position);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);

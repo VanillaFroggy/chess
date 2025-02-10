@@ -1,13 +1,15 @@
 package com.internship.model.figure;
 
+import com.internship.model.CellStatus;
 import com.internship.model.Team;
-import com.internship.model.figure.impl.King;
 import com.internship.model.game.Board;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
+
+import static com.internship.model.CellStatus.getCellStatus;
 
 public abstract class Figure {
     protected Position position;
@@ -84,14 +86,14 @@ public abstract class Figure {
         for (int coordinate = currentCoordinate + 1; coordinate < maxCoordinate; coordinate++) {
             if (shouldBreakLoop(
                     possibleMoves,
-                    getCellStatus(figureGetter.apply(coordinate)),
+                    getCellStatus(figureGetter.apply(coordinate), team),
                     positionGetter.apply(coordinate)
             )) break;
         }
         for (int coordinate = currentCoordinate - 1; coordinate >= 0; coordinate--) {
             if (shouldBreakLoop(
                     possibleMoves,
-                    getCellStatus(figureGetter.apply(coordinate)),
+                    getCellStatus(figureGetter.apply(coordinate), team),
                     positionGetter.apply(coordinate)
             )) break;
         }
@@ -125,7 +127,7 @@ public abstract class Figure {
             int height = heightGetter.apply(width - position.x());
             if (height < 0 || height >= maxHeight
                     || shouldBreakLoop(possibleMoves,
-                    getCellStatus(board.getCells()[width][height]),
+                    getCellStatus(board.getCells()[width][height], team),
                     new Position(width, height))
             ) {
                 break;
@@ -135,7 +137,7 @@ public abstract class Figure {
             int height = heightGetter.apply(position.x() - width);
             if (height < 0 || height >= maxHeight
                     || shouldBreakLoop(possibleMoves,
-                    getCellStatus(board.getCells()[width][height]),
+                    getCellStatus(board.getCells()[width][height], team),
                     new Position(width, height))
             ) {
                 break;
@@ -163,10 +165,10 @@ public abstract class Figure {
         return false;
     }
 
-    protected CellStatus getCellStatus(Figure figure) {
-        return (figure == null)
-                ? (CellStatus.EMPTY)
-                : ((figure.getTeam().equals(team)) ? (CellStatus.SAME_TEAM)
-                : ((figure.getClass().equals(King.class)) ? (CellStatus.OPPONENT_KING) : (CellStatus.OTHER_TEAM)));
-    }
+//    protected CellStatus getCellStatus(Figure figure) {
+//        return (figure == null)
+//                ? (CellStatus.EMPTY)
+//                : ((figure.getTeam().equals(team)) ? (CellStatus.SAME_TEAM)
+//                : ((figure.getClass().equals(King.class)) ? (CellStatus.OPPONENT_KING) : (CellStatus.OTHER_TEAM)));
+//    }
 }

@@ -8,6 +8,8 @@ import com.internship.model.game.Board;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.internship.model.CellStatus.getCellStatus;
+
 public class King extends Figure {
     private boolean wasCastled = false;
 
@@ -53,7 +55,7 @@ public class King extends Figure {
     }
 
     private boolean shouldBreakCastlingLoop(List<Position> figures, Figure figure) {
-        switch (getCellStatus(figure)) {
+        switch (getCellStatus(figure, team)) {
             case SAME_TEAM -> {
                 if (figure.getClass().equals(Rook.class)) {
                     figures.add(figure.getPosition());

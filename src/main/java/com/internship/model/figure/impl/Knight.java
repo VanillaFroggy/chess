@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
+import static com.internship.model.CellStatus.getCellStatus;
+
 public class Knight extends Figure {
     public Knight(Position position, Team team) {
         super(position, team);
@@ -47,14 +49,14 @@ public class Knight extends Figure {
                 if (correctHeight(position.y() + index)) {
                     shouldBreakLoop(
                             possibleMoves,
-                            getCellStatus(board.getCells()[width][position.y() + index]),
+                            getCellStatus(board.getCells()[width][position.y() + index], team),
                             new Position(width, position.y() + index)
                     );
                 }
                 if (correctHeight(position.y() - index)) {
                     shouldBreakLoop(
                             possibleMoves,
-                            getCellStatus(board.getCells()[width][position.y() - index]),
+                            getCellStatus(board.getCells()[width][position.y() - index], team),
                             new Position(width, position.y() - index)
                     );
                 }
