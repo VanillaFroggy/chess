@@ -70,6 +70,7 @@ public class Game {
             if (!gameInProcess) return;
             Player opponent = player.equals(players[0]) ? players[1] : players[0];
             if (onlyKingsOnBoard(player, opponent)) {
+                gameInProcess = false;
                 lastPlayer = player;
                 canMove.signal();
                 lock.unlock();
@@ -90,7 +91,6 @@ public class Game {
 
     private boolean onlyKingsOnBoard(Player player, Player opponent) {
         if (player.figures().size() == 1 && opponent.figures().size() == 1) {
-            gameInProcess = false;
             int lot = Math.abs(ThreadLocalRandom.current().nextInt() % 2);
             System.out.printf(
                     "%s team gave up, %s team won!\n",
