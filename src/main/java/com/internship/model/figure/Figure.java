@@ -164,11 +164,4 @@ public abstract class Figure {
         }
         return false;
     }
-
-//    protected CellStatus getCellStatus(Figure figure) {
-//        return (figure == null)
-//                ? (CellStatus.EMPTY)
-//                : ((figure.getTeam().equals(team)) ? (CellStatus.SAME_TEAM)
-//                : ((figure.getClass().equals(King.class)) ? (CellStatus.OPPONENT_KING) : (CellStatus.OTHER_TEAM)));
-//    }
 }
