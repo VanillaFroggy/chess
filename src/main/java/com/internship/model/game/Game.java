@@ -79,7 +79,7 @@ public class Game {
                 canMove.signal();
                 lock.unlock();
                 return;
-            } else if (kingStatus.equals(KingStatus.PROTECTED)) {
+            } else if (kingStatus.equals(KingStatus.PROTECTED) || kingStatus.equals(KingStatus.MOVED)) {
                 promotePawns(player);
                 return;
             }
@@ -169,25 +169,19 @@ public class Game {
                 protectTheKing(foundProtectors, player, opponent);
                 return KingStatus.PROTECTED;
             }
+        } else if (king.isCheckmated(opponentPossibleMovesByFigures)) {
+            possibleMoves.removeAll(
+                    opponentPossibleMovesByFigures.entrySet()
+                            .stream()
+                            .flatMap(figureListEntry -> figureListEntry.getValue().stream())
+                            .collect(Collectors.toSet())
+            );
+            Collections.shuffle(possibleMoves);
+            makeMove(player, opponent, king, possibleMoves.getFirst());
+            return KingStatus.MOVED;
         } else {
             return KingStatus.SAFE;
         }
-    }
-
-    private void protectTheKing(Map<Figure, List<Position>> foundProtectors, Player player, Player opponent) {
-        Map.Entry<Figure, List<Position>> chosenProtector = foundProtectors.entrySet()
-                .stream()
-                .collect(Collectors.collectingAndThen(Collectors.toList(), collected -> {
-                    Collections.shuffle(collected);
-                    return collected;
-                })).getFirst();
-        Position wayToProtect = chosenProtector.getValue()
-                .stream()
-                .collect(Collectors.collectingAndThen(Collectors.toList(), collected -> {
-                    Collections.shuffle(collected);
-                    return collected;
-                })).getFirst();
-        makeMove(player, opponent, chosenProtector.getKey(), wayToProtect);
     }
 
     private Map<Figure, List<Position>> findWhoCanProtectTheKing(
@@ -254,6 +248,22 @@ public class Game {
         return diagonalWay;
     }
 
+    private void protectTheKing(Map<Figure, List<Position>> foundProtectors, Player player, Player opponent) {
+        Map.Entry<Figure, List<Position>> chosenProtector = foundProtectors.entrySet()
+                .stream()
+                .collect(Collectors.collectingAndThen(Collectors.toList(), collected -> {
+                    Collections.shuffle(collected);
+                    return collected;
+                })).getFirst();
+        Position wayToProtect = chosenProtector.getValue()
+                .stream()
+                .collect(Collectors.collectingAndThen(Collectors.toList(), collected -> {
+                    Collections.shuffle(collected);
+                    return collected;
+                })).getFirst();
+        makeMove(player, opponent, chosenProtector.getKey(), wayToProtect);
+    }
+
     private Position getKingMoves(
             List<Position> possibleMoves,
             Map<Figure, List<Position>> opponentPossibleMovesByFigures
@@ -306,7 +316,18 @@ public class Game {
     private void makeMove(Player player, Player opponent, Figure figure, Position position) {
         Figure goalFigure = board.getCells()[position.x()][position.y()];
         switch (getCellStatus(goalFigure, player.team())) {
-            case EMPTY -> board.getCells()[figure.getPosition().x()][figure.getPosition().y()] = null;
+            case EMPTY -> {
+                if (figure.getClass().equals(Pawn.class) && goalFigure != null
+                        && board.getCells()[figure.getPosition().x()][goalFigure.getPosition().y()].getClass()
+                        .equals(Pawn.class)
+                        && ((Pawn) board.getCells()[figure.getPosition().x()][goalFigure.getPosition().y()])
+                        .isReadyForCaptureByOpponentPawn()) {
+                    Pawn opponentPawn = (Pawn) board.getCells()[figure.getPosition().x()][goalFigure.getPosition().y()];
+                    opponent.figures().removeIf(element -> element.equals(opponentPawn));
+                    board.getCells()[figure.getPosition().x()][goalFigure.getPosition().y()] = null;
+                }
+                board.getCells()[figure.getPosition().x()][figure.getPosition().y()] = null;
+            }
             case OTHER_TEAM -> {
                 board.getCells()[figure.getPosition().x()][figure.getPosition().y()] = null;
                 opponent.figures().removeIf(element -> element.equals(goalFigure));
@@ -321,8 +342,29 @@ public class Game {
         board.getCells()[position.x()][position.y()] = figure;
         printPlayerMove(player, figure, goalFigure, position);
         figure.setPosition(position);
+        setPawnsUnreadyToCapture(player);
+        changePawnStatus(figure);
         if (figure instanceof FigureWithFirstMove && ((FigureWithFirstMove) figure).isFirstMove()) {
             ((FigureWithFirstMove) figure).setFirstMove(false);
+        }
+    }
+
+    private void setPawnsUnreadyToCapture(Player player) {
+        player.figures().forEach(element -> {
+            if (element.getClass().equals(Pawn.class) && ((Pawn) element).isReadyForCaptureByOpponentPawn()) {
+                ((Pawn) element).setReadyForCaptureByOpponentPawn(false);
+            }
+        });
+    }
+
+    private void changePawnStatus(Figure figure) {
+        if (figure.getClass().equals(Pawn.class)) {
+            Pawn pawn = (Pawn) figure;
+            if (pawn.isFirstMove()
+                    && !pawn.isReadyForCaptureByOpponentPawn()
+                    && Math.abs(pawn.getPosition().y() - pawn.getLastPosition().y()) == 2) {
+                pawn.setReadyForCaptureByOpponentPawn(true);
+            }
         }
     }
 

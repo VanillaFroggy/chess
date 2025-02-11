@@ -1,5 +1,5 @@
 package com.internship.model;
 
 public enum KingStatus {
-    SAFE, PROTECTED, CHECKMATED
+    SAFE, MOVED, PROTECTED, CHECKMATED
 }

@@ -15,10 +15,12 @@ public abstract class Figure {
     protected Position position;
     protected final Team team;
     protected String name;
+    private Position lastPosition;
 
     public Figure(Position position, Team team) {
         this.position = position;
         this.team = team;
+        lastPosition = position;
     }
 
     public Position getPosition() {
@@ -26,7 +28,12 @@ public abstract class Figure {
     }
 
     public void setPosition(Position position) {
+        lastPosition = this.position;
         this.position = position;
+    }
+
+    public Position getLastPosition() {
+        return lastPosition;
     }
 
     public Team getTeam() {
@@ -145,6 +152,7 @@ public abstract class Figure {
         }
         return possibleMoves;
     }
+
     protected boolean shouldBreakLoop(List<Position> possibleMoves, CellStatus cellStatus, Position position) {
         switch (cellStatus) {
             case EMPTY -> {
