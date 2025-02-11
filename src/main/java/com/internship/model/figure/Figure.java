@@ -145,21 +145,17 @@ public abstract class Figure {
         }
         return possibleMoves;
     }
-
     protected boolean shouldBreakLoop(List<Position> possibleMoves, CellStatus cellStatus, Position position) {
         switch (cellStatus) {
             case EMPTY -> {
                 possibleMoves.add(position);
                 return false;
             }
-            case OTHER_TEAM -> {
+            case OTHER_TEAM, OPPONENT_KING -> {
                 return possibleMoves.add(position);
             }
             case SAME_TEAM -> {
                 return true;
-            }
-            case OPPONENT_KING -> {
-                return false;
             }
         }
         return false;

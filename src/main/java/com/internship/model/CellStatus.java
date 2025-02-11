@@ -7,9 +7,15 @@ public enum CellStatus {
     EMPTY, SAME_TEAM, OTHER_TEAM, OPPONENT_KING;
 
     public static CellStatus getCellStatus(Figure figure, Team team) {
-        return (figure == null)
-                ? (CellStatus.EMPTY)
-                : ((figure.getTeam().equals(team)) ? (CellStatus.SAME_TEAM)
-                : ((figure.getClass().equals(King.class)) ? (CellStatus.OPPONENT_KING) : (CellStatus.OTHER_TEAM)));
+        if (figure == null) {
+            return CellStatus.EMPTY;
+        }
+        if (figure.getTeam().equals(team)) {
+            return CellStatus.SAME_TEAM;
+        }
+        if (figure.getClass().equals(King.class)) {
+            return CellStatus.OPPONENT_KING;
+        }
+        return CellStatus.OTHER_TEAM;
     }
 }

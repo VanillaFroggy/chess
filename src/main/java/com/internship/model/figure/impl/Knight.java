@@ -23,13 +23,13 @@ public class Knight extends Figure {
         List<Position> possibleMoves = findPossibleMovesForOneSide(
                 board,
                 position.x() + 1,
-                (width) -> width <= position.x() + 2,
+                (width) -> width < position.x() + 3,
                 (width) -> width + 1
         );
         possibleMoves.addAll(findPossibleMovesForOneSide(
                 board,
                 position.x() - 1,
-                (width) -> width > position.x() - 2,
+                (width) -> width > position.x() - 3,
                 (width) -> width - 1
         ));
         return possibleMoves;

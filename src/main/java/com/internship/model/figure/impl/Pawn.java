@@ -3,6 +3,7 @@ package com.internship.model.figure.impl;
 import com.internship.model.Team;
 import com.internship.model.CellStatus;
 import com.internship.model.figure.Figure;
+import com.internship.model.figure.FigureWithFirstMove;
 import com.internship.model.figure.Position;
 import com.internship.model.game.Board;
 
@@ -13,8 +14,7 @@ import java.util.function.BinaryOperator;
 
 import static com.internship.model.CellStatus.getCellStatus;
 
-public class Pawn extends Figure {
-    private boolean firstMove = true;
+public class Pawn extends FigureWithFirstMove {
 
     public Pawn(Position position, Team team) {
         super(position, team);
@@ -33,7 +33,6 @@ public class Pawn extends Figure {
                 if (firstMove && getCellStatus(board.getCells()[position.x()][moveByHeight.apply(position.y(), 2)], team)
                         .equals(CellStatus.EMPTY)) {
                     possibleMoves.add(new Position(position.x(), moveByHeight.apply(position.y(), 2)));
-                    firstMove = false;
                 }
             }
             if (position.x() > 0

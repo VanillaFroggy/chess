@@ -2,17 +2,18 @@ package com.internship.model.figure.impl;
 
 import com.internship.model.Team;
 import com.internship.model.figure.Figure;
+import com.internship.model.figure.FigureWithFirstMove;
 import com.internship.model.figure.Position;
 import com.internship.model.game.Board;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.internship.model.CellStatus.getCellStatus;
 
-public class King extends Figure {
-    private boolean wasCastled = false;
-
+public class King extends FigureWithFirstMove {
     public King(Position position, Team team) {
         super(position, team);
         name = "K";
@@ -32,9 +33,9 @@ public class King extends Figure {
                 position.x() < Board.WIDTH - 1 ? position.x() + 2 : position.x() + 1,
                 position.y() < Board.HEIGHT - 1 ? position.y() + 2 : position.y() + 1
         ));
-        if (!wasCastled) {
+        possibleMoves.removeIf(movement -> movement.x() < position.x() - 1 || movement.y() < position.y() - 1);
+        if (firstMove) {
             possibleMoves.addAll(findCastlingMoves(board));
-            wasCastled = true;
         }
         return possibleMoves;
     }
@@ -70,5 +71,23 @@ public class King extends Figure {
             }
         }
         return true;
+    }
+
+    public boolean opponentCoversAllMoves(
+            Map<Figure, List<Position>> opponentPossibleMovesByFigures,
+            List<Position> possibleMoves
+    ) {
+        return opponentPossibleMovesByFigures.entrySet()
+                .stream()
+                .flatMap(figureListEntry -> figureListEntry.getValue().stream())
+                .collect(Collectors.toSet())
+                .containsAll(possibleMoves);
+    }
+
+    public boolean isCheckmated(Map<Figure, List<Position>> opponentPossibleMovesByFigures) {
+        return opponentPossibleMovesByFigures.entrySet()
+                .stream()
+                .flatMap(figureListEntry -> figureListEntry.getValue().stream())
+                .anyMatch(element -> element.equals(position));
     }
 }
