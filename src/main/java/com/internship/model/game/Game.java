@@ -441,13 +441,8 @@ public class Game {
         Map<Figure, List<Position>> playerPossibleMoves = getPossibleMovesByFigures(board, player.figures());
         Map<Figure, List<Position>> opponentPossibleMoves = getPossibleMovesByFigures(board, lastPlayer.figures());
         List<Position> kingPossibleMoves = opponentKing.findPossibleMoves(board);
-        if (moveNumber > 150) {
-            System.out.printf("%s", "");
-        }
-        boolean kingCanNotMove = opponentKing.opponentCoversAllMoves(playerPossibleMoves, kingPossibleMoves);
-        boolean noOneCanProtectTheKing = findWhoCanProtectTheKing(opponentKing, opponentPossibleMoves, playerPossibleMoves)
-                .isEmpty();
-        return kingCanNotMove && noOneCanProtectTheKing;
+        return opponentKing.opponentCoversAllMoves(playerPossibleMoves, kingPossibleMoves)
+                && findWhoCanProtectTheKing(opponentKing, opponentPossibleMoves, playerPossibleMoves).isEmpty();
     }
 
     private void printGameResult(boolean isDraw) {
