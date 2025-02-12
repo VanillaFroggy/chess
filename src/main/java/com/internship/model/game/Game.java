@@ -71,9 +71,8 @@ public class Game {
                 canMove.await();
             }
             if (!gameInProcess) return;
-            Player opponent = player.equals(players[0]) ? players[1] : players[0];
-            KingStatus kingStatus = getKingStatus(player, opponent);
-            if (onlyKingsOnBoard(player, opponent) || kingStatus.equals(KingStatus.CHECKMATED)) {
+            KingStatus kingStatus = getKingStatus(player);
+            if (onlyKingsOnBoard(player) || kingStatus.equals(KingStatus.CHECKMATED)) {
                 gameInProcess = false;
                 lastPlayer = player;
                 canMove.signal();
@@ -85,7 +84,7 @@ public class Game {
             Figure figure = getRandomFigureWhichCanMove(player);
             Position position = null;
             if (figure != null) {
-                position = getPositionToMove(player, figure, opponent);
+                position = getPositionToMove(player, figure);
             }
             if (position == null) {
                 printGameResult(true);
@@ -95,7 +94,7 @@ public class Game {
                 lock.unlock();
                 return;
             }
-            makeMove(player, opponent, figure, position);
+            makeMove(player, figure, position);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } finally {
@@ -107,12 +106,12 @@ public class Game {
         }
     }
 
-    private Position getPositionToMove(Player player, Figure figure, Player opponent) {
+    private Position getPositionToMove(Player player, Figure figure) {
         Position position;
         if (figure.getClass().equals(King.class)) {
             position = getKingMoves(
                     figure.findPossibleMoves(board),
-                    getPossibleMovesByFigures(board, opponent.figures())
+                    getPossibleMovesByFigures(board, lastPlayer.figures())
             );
             if (position == null) {
                 King king = (King) figure;
@@ -129,16 +128,19 @@ public class Game {
         return position;
     }
 
-    private boolean onlyKingsOnBoard(Player player, Player opponent) {
-        if (player.figures().size() == 1 && opponent.figures().size() == 1) {
+    private boolean onlyKingsOnBoard(Player player) {
+        if (player.figures().size() == 1 && lastPlayer.figures().size() == 1) {
             printGameResult(true);
             return true;
         }
         return false;
     }
 
-    private KingStatus getKingStatus(Player player, Player opponent) {
-        Map<Figure, List<Position>> opponentPossibleMovesByFigures = getPossibleMovesByFigures(board, opponent.figures());
+    private KingStatus getKingStatus(Player player) {
+        Map<Figure, List<Position>> opponentPossibleMovesByFigures = getPossibleMovesByFigures(
+                board,
+                lastPlayer.figures()
+        );
         King king = (King) player.figures()
                 .stream()
                 .filter(figure -> figure.getClass().equals(King.class))
@@ -160,7 +162,7 @@ public class Game {
                 printGameResult(false);
                 return KingStatus.CHECKMATED;
             } else {
-                protectTheKing(foundProtectors, player, opponent);
+                protectTheKing(foundProtectors, player);
                 return KingStatus.PROTECTED;
             }
         } else if (king.isCheckmated(opponentPossibleMovesByFigures)) {
@@ -171,7 +173,7 @@ public class Game {
                             .collect(Collectors.toSet())
             );
             Collections.shuffle(possibleMoves);
-            makeMove(player, opponent, king, possibleMoves.getFirst());
+            makeMove(player, king, possibleMoves.getFirst());
             return KingStatus.MOVED;
         } else {
             return KingStatus.SAFE;
@@ -242,7 +244,7 @@ public class Game {
         return diagonalWay;
     }
 
-    private void protectTheKing(Map<Figure, List<Position>> foundProtectors, Player player, Player opponent) {
+    private void protectTheKing(Map<Figure, List<Position>> foundProtectors, Player player) {
         Map.Entry<Figure, List<Position>> chosenProtector = foundProtectors.entrySet()
                 .stream()
                 .collect(Collectors.collectingAndThen(Collectors.toList(), collected -> {
@@ -255,7 +257,7 @@ public class Game {
                     Collections.shuffle(collected);
                     return collected;
                 })).getFirst();
-        makeMove(player, opponent, chosenProtector.getKey(), wayToProtect);
+        makeMove(player, chosenProtector.getKey(), wayToProtect);
     }
 
     private Position getKingMoves(
@@ -307,7 +309,7 @@ public class Game {
         return possibleMoves.isEmpty() ? null : possibleMoves.getFirst();
     }
 
-    private void makeMove(Player player, Player opponent, Figure figure, Position position) {
+    private void makeMove(Player player, Figure figure, Position position) {
         Figure goalFigure = board.getCells()[position.x()][position.y()];
         switch (getCellStatus(goalFigure, player.team())) {
             case EMPTY -> {
@@ -317,14 +319,14 @@ public class Game {
                         && ((Pawn) board.getCells()[figure.getPosition().x()][goalFigure.getPosition().y()])
                         .isReadyForCaptureByOpponentPawn()) {
                     Pawn opponentPawn = (Pawn) board.getCells()[figure.getPosition().x()][goalFigure.getPosition().y()];
-                    opponent.figures().removeIf(element -> element.equals(opponentPawn));
+                    lastPlayer.figures().removeIf(element -> element.equals(opponentPawn));
                     board.getCells()[figure.getPosition().x()][goalFigure.getPosition().y()] = null;
                 }
                 board.getCells()[figure.getPosition().x()][figure.getPosition().y()] = null;
             }
             case OTHER_TEAM -> {
                 board.getCells()[figure.getPosition().x()][figure.getPosition().y()] = null;
-                opponent.figures().removeIf(element -> element.equals(goalFigure));
+                lastPlayer.figures().removeIf(element -> element.equals(goalFigure));
             }
             case SAME_TEAM -> {
                 if (goalFigure.getClass().equals(Rook.class) && figure.getClass().equals(King.class)) {
