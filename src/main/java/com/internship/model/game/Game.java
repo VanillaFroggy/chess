@@ -390,9 +390,9 @@ public class Game {
 
     private void printPlayerMove(Player player, Figure figure, Figure goalFigure, boolean wasPromoted) {
         if (player.team().equals(Team.WHITE)) {
-            System.out.printf("%6d. %7s ", moveNumber++, getInfoToPrint(figure, goalFigure, player, wasPromoted));
+            System.out.printf("%6d. %9s ", moveNumber++, getInfoToPrint(figure, goalFigure, player, wasPromoted));
         } else {
-            System.out.printf("%7s\n", getInfoToPrint(figure, goalFigure, player, wasPromoted));
+            System.out.printf("%9s\n", getInfoToPrint(figure, goalFigure, player, wasPromoted));
         }
     }
 
@@ -415,6 +415,21 @@ public class Game {
             stringBuilder.append(String.format("%c", figure.getLastPosition().x() + 'a'));
         } else if (!wasPromoted) {
             stringBuilder.append(figure.getName());
+        }
+        Figure sameFigure = player.figures()
+                .stream()
+                .filter(element ->
+                        element.getClass()
+                                .equals(figure.getClass())
+                                && element.findPossibleMoves(board).contains(figure.getPosition()))
+                .findFirst()
+                .orElse(null);
+        if (!figure.getClass().equals(Pawn.class) && sameFigure != null) {
+            if (sameFigure.getPosition().x() != figure.getLastPosition().x()) {
+                stringBuilder.append(String.format("%c", figure.getLastPosition().x() + 'a'));
+            } else if (sameFigure.getPosition().y() != figure.getLastPosition().y()) {
+                stringBuilder.append(String.format("%c", figure.getLastPosition().y() + 1));
+            }
         }
         if (goalFigure != null) {
             stringBuilder.append("x");
