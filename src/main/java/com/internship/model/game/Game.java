@@ -11,7 +11,6 @@ import com.internship.model.figure.impl.Pawn;
 import com.internship.model.figure.impl.Rook;
 
 import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -27,6 +26,7 @@ public class Game {
     private final Board board = new Board();
     private final Player[] players = new Player[2];
     private boolean gameInProcess = false;
+    private int moveNumber = 1;
 
     public boolean isGameInProcess() {
         return gameInProcess;
@@ -80,7 +80,6 @@ public class Game {
                 lock.unlock();
                 return;
             } else if (kingStatus.equals(KingStatus.PROTECTED) || kingStatus.equals(KingStatus.MOVED)) {
-                promotePawns(player);
                 return;
             }
             Figure figure = getRandomFigureWhichCanMove(player);
@@ -89,7 +88,7 @@ public class Game {
                 position = getPositionToMove(player, figure, opponent);
             }
             if (position == null) {
-                System.out.printf("%s king is checkmated, %s team won", player.team(), opponent.team());
+                printGameResult(true);
                 gameInProcess = false;
                 lastPlayer = player;
                 canMove.signal();
@@ -97,7 +96,6 @@ public class Game {
                 return;
             }
             makeMove(player, opponent, figure, position);
-            promotePawns(player);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } finally {
@@ -133,12 +131,7 @@ public class Game {
 
     private boolean onlyKingsOnBoard(Player player, Player opponent) {
         if (player.figures().size() == 1 && opponent.figures().size() == 1) {
-            int lot = Math.abs(ThreadLocalRandom.current().nextInt() % 2);
-            System.out.printf(
-                    "%s team gave up, %s team won!\n",
-                    players[lot].team(),
-                    players[Math.abs(lot - 1)].team()
-            );
+            printGameResult(true);
             return true;
         }
         return false;
@@ -164,6 +157,7 @@ public class Game {
                     opponentPossibleMovesByFigures
             );
             if (foundProtectors.isEmpty()) {
+                printGameResult(false);
                 return KingStatus.CHECKMATED;
             } else {
                 protectTheKing(foundProtectors, player, opponent);
@@ -340,13 +334,30 @@ public class Game {
             }
         }
         board.getCells()[position.x()][position.y()] = figure;
-        printPlayerMove(player, figure, goalFigure, position);
         figure.setPosition(position);
         setPawnsUnreadyToCapture(player);
         changePawnStatus(figure);
         if (figure instanceof FigureWithFirstMove && ((FigureWithFirstMove) figure).isFirstMove()) {
             ((FigureWithFirstMove) figure).setFirstMove(false);
         }
+        boolean wasPromoted = false;
+        if (figure.getClass().equals(Pawn.class) && ((Pawn) figure).canPromote()) {
+            figure = promotePawn(player, (Pawn) figure);
+            wasPromoted = true;
+        }
+        printPlayerMove(player, figure, goalFigure, wasPromoted);
+    }
+
+    private void castleKing(King king, Rook rook) {
+        BinaryOperator<Integer> operator = king.getPosition().x() < rook.getPosition().x()
+                ? Integer::sum
+                : (a, b) -> a - b;
+        board.getCells()[operator.apply(king.getPosition().x(), 2)][king.getPosition().y()] = king;
+        board.getCells()[operator.apply(king.getPosition().x(), 1)][king.getPosition().y()] = rook;
+        king.setPosition(new Position(operator.apply(king.getPosition().x(), 2), king.getPosition().y()));
+        rook.setPosition(new Position(operator.apply(king.getPosition().x(), 1), king.getPosition().y()));
+        king.setFirstMove(false);
+        rook.setFirstMove(false);
     }
 
     private void setPawnsUnreadyToCapture(Player player) {
@@ -368,60 +379,87 @@ public class Game {
         }
     }
 
-    private void castleKing(King king, Rook rook) {
-        BinaryOperator<Integer> operator = king.getPosition().x() < rook.getPosition().x()
-                ? Integer::sum
-                : (a, b) -> a - b;
-        int cellsCount = rook.getPosition().x();
-        board.getCells()[operator.apply(king.getPosition().x(), 2)][king.getPosition().y()] = king;
-        board.getCells()[operator.apply(king.getPosition().x(), 1)][king.getPosition().y()] = rook;
-        king.setPosition(new Position(operator.apply(king.getPosition().x(), 2), king.getPosition().y()));
-        rook.setPosition(new Position(operator.apply(king.getPosition().x(), 1), king.getPosition().y()));
-        king.setFirstMove(false);
-        rook.setFirstMove(false);
-        cellsCount = Integer.max(cellsCount, rook.getPosition().x()) - Integer.min(cellsCount, rook.getPosition().x());
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.repeat("0-", cellsCount);
-        if (!stringBuilder.isEmpty()) {
-            stringBuilder.deleteCharAt(stringBuilder.length() - 1);
+    private Figure promotePawn(Player player, Pawn pawn) {
+        player.figures().removeIf(figure -> figure.equals(pawn));
+        Figure figure = pawn.promote();
+        player.figures().add(figure);
+        return figure;
+    }
+
+    private void printPlayerMove(Player player, Figure figure, Figure goalFigure, boolean wasPromoted) {
+        if (player.team().equals(Team.WHITE)) {
+            System.out.printf("%6d. %7s ", moveNumber++, getInfoToPrint(figure, goalFigure, player, wasPromoted));
+        } else {
+            System.out.printf("%7s\n", getInfoToPrint(figure, goalFigure, player, wasPromoted));
         }
-        System.out.printf(
-                "%s team made castling: %s",
-                king.getTeam(),
-                stringBuilder
-        );
     }
 
-    private static void printPlayerMove(Player player, Figure figure, Figure goalFigure, Position position) {
-        System.out.printf(
-                "%s team move [%s%c%d - %s%c%d]\n",
-                player.team().equals(Team.WHITE) ? Team.WHITE : Team.BLACK,
-                figure.getName(),
-                figure.getPosition().x() + 'a',
-                figure.getPosition().y() + 1,
-                goalFigure != null ? figure.getName() + "x" : figure.getName(),
-                position.x() + 'a',
-                position.y() + 1
-        );
+    private String getInfoToPrint(Figure figure, Figure goalFigure, Player player, boolean wasPromoted) {
+        StringBuilder stringBuilder = new StringBuilder();
+        if (figure.getClass().equals(King.class) && goalFigure != null
+                && goalFigure.getClass().equals(Rook.class)
+                && figure.getTeam().equals(goalFigure.getTeam())) {
+            stringBuilder.repeat(
+                    "O-",
+                    Integer.max(goalFigure.getLastPosition().x(), goalFigure.getPosition().x())
+                            - Integer.min(goalFigure.getLastPosition().x(), goalFigure.getPosition().x())
+            );
+            if (!stringBuilder.isEmpty()) {
+                stringBuilder.deleteCharAt(stringBuilder.length() - 1);
+            }
+            return stringBuilder.toString();
+        }
+        if ((figure.getClass().equals(Pawn.class) || wasPromoted) && goalFigure != null) {
+            stringBuilder.append(String.format("%c", figure.getLastPosition().x() + 'a'));
+        } else if (!wasPromoted) {
+            stringBuilder.append(figure.getName());
+        }
+        if (goalFigure != null) {
+            stringBuilder.append("x");
+        }
+        stringBuilder.append(String.format("%c", figure.getPosition().x() + 'a'))
+                .append(figure.getPosition().y() + 1);
+        if (wasPromoted) {
+            stringBuilder.append("=").append(figure.getName());
+        }
+        King opponentKing = (King) lastPlayer.figures()
+                .stream()
+                .filter(element -> element.getClass().equals(King.class))
+                .findFirst()
+                .orElseThrow(NullPointerException::new);
+        if (figure.findPossibleMoves(board).contains(opponentKing.getPosition())) {
+            if (timeToGiveUpForOpponentKing(opponentKing, player)) {
+                stringBuilder.append("#");
+            } else {
+                stringBuilder.append("+");
+            }
+        }
+        return stringBuilder.toString();
     }
 
-    private void promotePawns(Player player) {
-        player.figures().addAll(
-                player.figures()
-                        .stream()
-                        .filter(figure -> figure.getClass().equals(Pawn.class) && ((Pawn) figure).canPromote())
-                        .map(figure -> ((Pawn) figure).promote())
-                        .peek(figure -> System.out.printf(
-                                "%s pawn %c%d promoted to %s%c%d\n",
-                                figure.getTeam(),
-                                figure.getPosition().x() + 'a',
-                                figure.getPosition().y() + 1,
-                                figure.getName(),
-                                figure.getPosition().x() + 'a',
-                                figure.getPosition().y() + 1
-                        ))
-                        .collect(Collectors.toSet())
-        );
-        player.figures().removeIf(figure -> figure.getClass().equals(Pawn.class) && ((Pawn) figure).canPromote());
+    private boolean timeToGiveUpForOpponentKing(King opponentKing, Player player) {
+        Map<Figure, List<Position>> playerPossibleMoves = getPossibleMovesByFigures(board, player.figures());
+        Map<Figure, List<Position>> opponentPossibleMoves = getPossibleMovesByFigures(board, lastPlayer.figures());
+        List<Position> kingPossibleMoves = opponentKing.findPossibleMoves(board);
+        if (moveNumber > 150) {
+            System.out.printf("%s", "");
+        }
+        boolean kingCanNotMove = opponentKing.opponentCoversAllMoves(playerPossibleMoves, kingPossibleMoves);
+        boolean noOneCanProtectTheKing = findWhoCanProtectTheKing(opponentKing, opponentPossibleMoves, playerPossibleMoves)
+                .isEmpty();
+        return kingCanNotMove && noOneCanProtectTheKing;
+    }
+
+    private void printGameResult(boolean isDraw) {
+        System.out.print("\n\n\n\tGAME RESULT: ");
+        if (isDraw) {
+            System.out.print("1/2-1/2");
+        } else {
+            System.out.printf("%d-%d\n",
+                    lastPlayer.team().equals(Team.WHITE) ? 1 : 0,
+                    lastPlayer.team().equals(Team.WHITE) ? 0 : 1
+            );
+        }
+        System.out.println("\n\n");
     }
 }

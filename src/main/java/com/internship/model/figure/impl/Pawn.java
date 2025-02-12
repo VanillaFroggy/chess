@@ -73,16 +73,24 @@ public class Pawn extends FigureWithFirstMove {
     public Figure promote() {
         switch (ThreadLocalRandom.current().nextInt(4)) {
             case 0 -> {
-                return new Knight(position, team);
+                Knight knight = new Knight(getLastPosition(), team);
+                knight.setPosition(position);
+                return knight;
             }
             case 1 -> {
-                return new Bishop(position, team);
+                Bishop bishop = new Bishop(getLastPosition(), team);
+                bishop.setPosition(position);
+                return bishop;
             }
             case 2 -> {
-                return new Rook(position, team);
+                Rook rook = new Rook(getLastPosition(), team);
+                rook.setPosition(position);
+                return rook;
             }
             case 3 -> {
-                return new Queen(position, team);
+                Queen queen = new Queen(getLastPosition(), team);
+                queen.setPosition(position);
+                return queen;
             }
         }
         return null;
