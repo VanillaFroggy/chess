@@ -48,12 +48,16 @@ public class Pawn extends FigureWithFirstMove {
             if (position.x() > 0
                     && (getCellStatus(board.getCells()[position.x() - 1][moveByHeight.apply(position.y(), 1)], team)
                     .equals(CellStatus.OTHER_TEAM)
+                    || getCellStatus(board.getCells()[position.x() - 1][moveByHeight.apply(position.y(), 1)], team)
+                    .equals(CellStatus.OPPONENT_KING)
                     || canCapturePawnByRightOrLeftSide(board, position.x() - 1, position.y()))) {
                 possibleMoves.add(new Position(position.x() - 1, moveByHeight.apply(position.y(), 1)));
             }
             if (position.x() < Board.WIDTH - 1
                     && (getCellStatus(board.getCells()[position.x() + 1][moveByHeight.apply(position.y(), 1)], team)
                     .equals(CellStatus.OTHER_TEAM)
+                    || getCellStatus(board.getCells()[position.x() + 1][moveByHeight.apply(position.y(), 1)], team)
+                    .equals(CellStatus.OPPONENT_KING)
                     || canCapturePawnByRightOrLeftSide(board, position.x() + 1, position.y()))) {
                 possibleMoves.add(new Position(position.x() + 1, moveByHeight.apply(position.y(), 1)));
             }
