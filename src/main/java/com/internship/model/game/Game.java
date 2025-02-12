@@ -428,7 +428,7 @@ public class Game {
             if (sameFigure.getPosition().x() != figure.getLastPosition().x()) {
                 stringBuilder.append(String.format("%c", figure.getLastPosition().x() + 'a'));
             } else if (sameFigure.getPosition().y() != figure.getLastPosition().y()) {
-                stringBuilder.append(String.format("%c", figure.getLastPosition().y() + 1));
+                stringBuilder.append(String.format("%d", figure.getLastPosition().y() + 1));
             }
         }
         if (goalFigure != null) {
